@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>EtherStake Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root{
+      --bg:#0A0E1A; --bg-card:#0F1526; --violet:#7B4FFF;
+      --violet-soft:rgba(123,79,255,0.12); --cyan:#A8F0E8;
+      --text:#E8EDF5; --muted:#7A849A; --border:rgba(123,79,255,0.2);
+      --error:#FF6B6B; --gold:#F5C842; --green:#4ADE80;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100vh;}
+
+    /* ── LOGIN SCREEN ── */
+    .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+    .login-card{background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:48px 40px;width:100%;max-width:400px;}
+    .login-card .logo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.3rem;margin-bottom:6px;}
+    .login-card .logo span{color:var(--violet);}
+    .login-card .sub{color:var(--muted);font-size:0.88rem;margin-bottom:32px;}
+    .login-card label{display:block;font-size:0.82rem;color:var(--muted);margin-bottom:6px;}
+    .login-card input{width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:'Inter',sans-serif;font-size:0.95rem;outline:none;transition:border-color 0.2s;margin-bottom:16px;}
+    .login-card input:focus{border-color:var(--violet);}
+    .login-btn{width:100%;background:var(--violet);color:#fff;border:none;padding:13px;border-radius:10px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.95rem;cursor:pointer;transition:opacity 0.2s;margin-top:4px;}
+    .login-btn:hover{opacity:0.88;}
+    .login-err{color:var(--error);font-size:0.82rem;margin-top:10px;display:none;}
+    .login-err.show{display:block;}
+
+    /* ── CONFIG NOTICE ── */
+    .config-notice{background:rgba(245,200,66,0.08);border:1px solid rgba(245,200,66,0.3);border-radius:12px;padding:14px 18px;font-size:0.82rem;color:var(--gold);line-height:1.6;margin-bottom:28px;}
+    .config-notice strong{display:block;margin-bottom:4px;}
+    .config-notice code{background:rgba(255,255,255,0.08);padding:1px 6px;border-radius:4px;font-size:0.78rem;}
+
+    /* ── ADMIN SHELL ── */
+    #adminShell{display:none;}
+    header{display:flex;justify-content:space-between;align-items:center;padding:20px 40px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:10;}
+    .header-logo{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.1rem;}
+    .header-logo span{color:var(--violet);}
+    .header-logo em{font-style:normal;font-size:0.72rem;color:var(--muted);margin-left:8px;font-weight:500;}
+    .header-right{display:flex;gap:12px;align-items:center;}
+    .refresh-btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--violet-soft);color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;transition:border-color 0.2s;}
+    .refresh-btn:hover{border-color:var(--violet);}
+    .refresh-btn svg{width:14px;height:14px;stroke:var(--cyan);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+    .logout-btn{padding:8px 16px;border-radius:8px;border:1px solid rgba(255,107,107,0.3);background:rgba(255,107,107,0.08);color:#FF9999;font-family:'Space Grotesk',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all 0.2s;}
+    .logout-btn:hover{border-color:rgba(255,107,107,0.6);color:#FFB3B3;}
+
+    main{max-width:1100px;margin:0 auto;padding:40px;}
+
+    /* ── STATS ROW ── */
+    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:36px;}
+    .stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:22px 24px;}
+    .stat-label{font-size:0.72rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;}
+    .stat-val{font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:700;color:var(--cyan);}
+    .stat-sub{font-size:0.75rem;color:var(--muted);margin-top:4px;}
+
+    /* ── FILTERS ── */
+    .filters{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center;}
+    .filter-btn{padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.2s;}
+    .filter-btn.active{border-color:var(--violet);background:var(--violet-soft);color:var(--text);}
+    .filter-btn:hover:not(.active){border-color:var(--violet);color:var(--text);}
+    .search-box{margin-left:auto;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,0.03);color:var(--text);font-family:'Inter',sans-serif;font-size:0.85rem;outline:none;width:220px;transition:border-color 0.2s;}
+    .search-box:focus{border-color:var(--violet);}
+    .search-box::placeholder{color:var(--muted);}
+
+    /* ── TABLE ── */
+    .table-wrap{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+    table{width:100%;border-collapse:collapse;}
+    thead tr{border-bottom:1px solid var(--border);}
+    th{text-align:left;padding:14px 18px;font-size:0.72rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;font-weight:600;white-space:nowrap;}
+    td{padding:16px 18px;font-size:0.88rem;border-bottom:1px solid rgba(123,79,255,0.08);vertical-align:middle;}
+    tr:last-child td{border-bottom:none;}
+    tr:hover td{background:rgba(123,79,255,0.04);}
+    .cell-user{font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--text);}
+    .cell-email{color:var(--muted);font-size:0.82rem;}
+    .cell-amount{font-family:'Space Grotesk',sans-serif;font-weight:700;color:var(--cyan);}
+    .cell-period{color:var(--muted);}
+    .cell-tx{font-family:'Space Grotesk',sans-serif;font-size:0.75rem;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .cell-tx.none{font-style:italic;}
+    .cell-date{color:var(--muted);font-size:0.8rem;white-space:nowrap;}
+
+    /* Status badge */
+    .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-family:'Space Grotesk',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.04em;white-space:nowrap;}
+    .badge-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+    .badge.pending{background:rgba(245,200,66,0.12);color:var(--gold);border:1px solid rgba(245,200,66,0.3);}
+    .badge.pending .badge-dot{background:var(--gold);}
+    .badge.confirmed{background:rgba(74,222,128,0.1);color:var(--green);border:1px solid rgba(74,222,128,0.25);}
+    .badge.confirmed .badge-dot{background:var(--green);}
+    .badge.rejected{background:rgba(255,107,107,0.1);color:var(--error);border:1px solid rgba(255,107,107,0.25);}
+    .badge.rejected .badge-dot{background:var(--error);}
+
+    /* Action buttons */
+    .action-wrap{display:flex;gap:6px;}
+    .btn-confirm{padding:6px 14px;border-radius:7px;border:1px solid rgba(74,222,128,0.35);background:rgba(74,222,128,0.08);color:var(--green);font-family:'Space Grotesk',sans-serif;font-size:0.78rem;font-weight:700;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+    .btn-confirm:hover{background:rgba(74,222,128,0.16);border-color:rgba(74,222,128,0.6);}
+    .btn-reject{padding:6px 14px;border-radius:7px;border:1px solid rgba(255,107,107,0.3);background:rgba(255,107,107,0.07);color:var(--error);font-family:'Space Grotesk',sans-serif;font-size:0.78rem;font-weight:700;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+    .btn-reject:hover{background:rgba(255,107,107,0.14);border-color:rgba(255,107,107,0.6);}
+    .btn-done{padding:6px 14px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-size:0.78rem;font-weight:600;cursor:default;}
+
+    /* Empty / loading states */
+    .empty-row td{text-align:center;padding:48px;color:var(--muted);font-size:0.9rem;}
+    .spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(123,79,255,0.3);border-top-color:var(--violet);border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+
+    /* Toast */
+    .toast{position:fixed;bottom:28px;right:28px;padding:12px 20px;border-radius:10px;font-family:'Space Grotesk',sans-serif;font-size:0.85rem;font-weight:600;color:#fff;opacity:0;transform:translateY(8px);transition:opacity 0.25s,transform 0.25s;pointer-events:none;z-index:999;}
+    .toast.show{opacity:1;transform:translateY(0);}
+    .toast.success{background:rgba(74,222,128,0.9);}
+    .toast.error{background:rgba(255,107,107,0.9);}
+
+    /* Live dot */
+    .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);margin-right:6px;animation:pulse-dot 2s ease-in-out infinite;}
+    @keyframes pulse-dot{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+    /* Responsive */
+    @media(max-width:860px){
+      header{padding:16px 20px;}
+      main{padding:24px 16px;}
+      .stats-row{grid-template-columns:1fr 1fr;}
+      .search-box{width:100%;margin-left:0;}
+      th:nth-child(4),td:nth-child(4),
+      th:nth-child(5),td:nth-child(5){display:none;}
+    }
+    @media(max-width:520px){
+      .stats-row{grid-template-columns:1fr 1fr;}
+      .stat-val{font-size:1.4rem;}
+      th:nth-child(3),td:nth-child(3){display:none;}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div class="login-wrap" id="loginScreen">
+  <div class="login-card">
+    <div class="logo">Ether<span>Stake</span></div>
+    <div class="sub">Admin Dashboard — restricted access</div>
+
+    <div class="config-notice" id="configNotice" style="display:none;">
+      <strong>⚠️ Configuration required</strong>
+      Open this file and replace <code>YOUR_BIN_ID</code> and <code>YOUR_MASTER_KEY</code> near the top of the &lt;script&gt; with your JSONbin credentials.
+    </div>
+
+    <label for="adminPass">Admin password</label>
+    <input type="password" id="adminPass" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <button class="login-btn" onclick="doLogin()">Sign in</button>
+    <div class="login-err" id="loginErr">Incorrect password. Try again.</div>
+  </div>
+</div>
+
+<!-- ── ADMIN SHELL ── -->
+<div id="adminShell">
+  <header>
+    <div class="header-logo">
+      Ether<span>Stake</span>
+      <em><span class="live-dot"></span>Admin</em>
+    </div>
+    <div class="header-right">
+      <button class="refresh-btn" onclick="loadDeposits()">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Refresh
+      </button>
+      <button class="logout-btn" onclick="doLogout()">Log out</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total deposits</div>
+        <div class="stat-val" id="statTotal">—</div>
+        <div class="stat-sub">all time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pending</div>
+        <div class="stat-val" id="statPending" style="color:var(--gold);">—</div>
+        <div class="stat-sub">awaiting confirmation</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Confirmed</div>
+        <div class="stat-val" id="statConfirmed" style="color:var(--green);">—</div>
+        <div class="stat-sub">approved</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total ETH</div>
+        <div class="stat-val" id="statEth">—</div>
+        <div class="stat-sub">confirmed volume</div>
+      </div>
+    </div>
+
+    <!-- Filters + search -->
+    <div class="filters">
+      <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+      <button class="filter-btn" onclick="setFilter('pending',this)">Pending</button>
+      <button class="filter-btn" onclick="setFilter('confirmed',this)">Confirmed</button>
+      <button class="filter-btn" onclick="setFilter('rejected',this)">Rejected</button>
+      <input class="search-box" type="text" id="searchBox" placeholder="Search username or email…" oninput="renderTable()"/>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Amount</th>
+            <th>Period</th>
+            <th>Tx Hash</th>
+            <th>Submitted</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="depositsBody">
+          <tr class="empty-row"><td colspan="7"><span class="spinner"></span>Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  /* ── CONFIG — replace these two values ── */
+  const JSONBIN_BIN_ID  = '6af3902effd5d16053b7d6e9';
+  const JSONBIN_API_KEY = '$2a$10$SltgCu.qDmydfW3qqFJPQOYPbj21wJMsj9KAiL4LaOMF27EUn/ssm';
+  const ADMIN_PASSWORD  = 'admin1234'; // change this to your chosen password
+
+  /* ── STATE ── */
+  let allDeposits = [];
+  let activeFilter = 'all';
+  let autoRefreshTimer = null;
+
+  /* ── LOGIN ── */
+  function doLogin(){
+    if(JSONBIN_BIN_ID === 'YOUR_BIN_ID' || JSONBIN_API_KEY === 'YOUR_MASTER_KEY'){
+      document.getElementById('configNotice').style.display = 'block';
+      return;
+    }
+    const val = document.getElementById('adminPass').value;
+    if(val === ADMIN_PASSWORD){
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('adminShell').style.display  = 'block';
+      loadDeposits();
+      // Auto-refresh every 30 seconds
+      autoRefreshTimer = setInterval(loadDeposits, 30000);
+    } else {
+      document.getElementById('loginErr').classList.add('show');
+    }
+  }
+
+  function doLogout(){
+    clearInterval(autoRefreshTimer);
+    document.getElementById('adminShell').style.display  = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('adminPass').value = '';
+    document.getElementById('loginErr').classList.remove('show');
+  }
+
+  /* ── LOAD DEPOSITS ── */
+  async function loadDeposits(){
+    try {
+      const res  = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`,{
+        headers:{'X-Master-Key': JSONBIN_API_KEY}
+      });
+      const data = await res.json();
+      allDeposits = (data.record && data.record.deposits) ? data.record.deposits : [];
+      updateStats();
+      renderTable();
+    } catch(e){
+      showToast('Failed to load deposits. Check your credentials.', 'error');
+    }
+  }
+
+  /* ── STATS ── */
+  function updateStats(){
+    const pending   = allDeposits.filter(d=>d.status==='pending').length;
+    const confirmed = allDeposits.filter(d=>d.status==='confirmed').length;
+    const ethVol    = allDeposits.filter(d=>d.status==='confirmed').reduce((s,d)=>s+(d.amount||0),0);
+    document.getElementById('statTotal').textContent     = allDeposits.length;
+    document.getElementById('statPending').textContent   = pending;
+    document.getElementById('statConfirmed').textContent = confirmed;
+    document.getElementById('statEth').textContent       = ethVol.toFixed(4)+' ETH';
+  }
+
+  /* ── FILTER ── */
+  function setFilter(f, btn){
+    activeFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderTable();
+  }
+
+  /* ── RENDER TABLE ── */
+  function renderTable(){
+    const q = document.getElementById('searchBox').value.toLowerCase();
+    let rows = allDeposits.filter(d=>{
+      if(activeFilter !== 'all' && d.status !== activeFilter) return false;
+      if(q && !(d.username||'').toLowerCase().includes(q) && !(d.email||'').toLowerCase().includes(q)) return false;
+      return true;
+    }).sort((a,b)=>b.id-a.id); // newest first
+
+    const tbody = document.getElementById('depositsBody');
+    if(!rows.length){
+      tbody.innerHTML = `<tr class="empty-row"><td colspan="7">No deposits found.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows.map(d=>`
+      <tr>
+        <td>
+          <div class="cell-user">${esc(d.username||'—')}</div>
+          <div class="cell-email">${esc(d.email||'')}</div>
+        </td>
+        <td class="cell-amount">${(d.amount||0).toFixed(4)} ETH</td>
+        <td class="cell-period">${periodLabel(d.period||180)}</td>
+        <td class="cell-tx ${d.txHash?'':'none'}" title="${esc(d.txHash||'')}">
+          ${d.txHash ? esc(d.txHash) : 'Not provided'}
+        </td>
+        <td class="cell-date">${formatDate(d.submittedAt)}</td>
+        <td>
+          <span class="badge ${d.status}">
+            <span class="badge-dot"></span>
+            ${capitalize(d.status)}
+          </span>
+        </td>
+        <td>
+          <div class="action-wrap">
+            ${d.status==='pending'
+              ? `<button class="btn-confirm" onclick="updateStatus(${d.id},'confirmed')">Confirm</button>
+                 <button class="btn-reject"  onclick="updateStatus(${d.id},'rejected')">Reject</button>`
+              : `<button class="btn-done" disabled>${d.status==='confirmed'?'✓ Confirmed':'✗ Rejected'}</button>`
+            }
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  /* ── UPDATE STATUS ── */
+  async function updateStatus(depositId, newStatus){
+    const idx = allDeposits.findIndex(d=>d.id===depositId);
+    if(idx===-1) return;
+    allDeposits[idx].status = newStatus;
+    allDeposits[idx].reviewedAt = new Date().toISOString();
+
+    try {
+      await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`,{
+        method:'PUT',
+        headers:{'Content-Type':'application/json','X-Master-Key': JSONBIN_API_KEY},
+        body: JSON.stringify({deposits: allDeposits})
+      });
+      updateStats();
+      renderTable();
+      showToast(`Deposit ${newStatus === 'confirmed' ? 'confirmed ✓' : 'rejected ✗'}`, newStatus==='confirmed'?'success':'error');
+    } catch(e){
+      // Revert on failure
+      allDeposits[idx].status = 'pending';
+      showToast('Update failed. Try again.', 'error');
+    }
+  }
+
+  /* ── HELPERS ── */
+  function periodLabel(days){
+    const map={30:'1 Month',90:'3 Months',180:'6 Months',365:'12 Months'};
+    return map[days]||days+' days';
+  }
+
+  function formatDate(iso){
+    if(!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})
+      +' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  }
+
+  function esc(str){ // prevent XSS
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function capitalize(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+  function showToast(msg, type='success'){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className   = `toast ${type} show`;
+    setTimeout(()=>t.classList.remove('show'), 3000);
+  }
+
+  // Show config notice if still using placeholder values
+  if(JSONBIN_BIN_ID==='YOUR_BIN_ID'||JSONBIN_API_KEY==='YOUR_MASTER_KEY'){
+    document.getElementById('configNotice').style.display='block';
+  }
+</script>
+</body>
+</html>
