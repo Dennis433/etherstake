@@ -1051,14 +1051,17 @@
           }
 
           // Calculate current balance with daily compounding for each deposit
-          let totalEth = 0, t1Rewards = 0, t2Rewards = 0;
+          let totalPrincipal = 0, t1Rewards = 0, t2Rewards = 0;
           const now = Date.now();
 
           mine.forEach(dep => {
             const principal = dep.amount || 0;
             const period    = dep.period || 180;
-            const start     = new Date(dep.submittedAt).getTime();
-            const daysElapsed = Math.min(Math.floor((now - start) / 86400000), period);
+            // Use confirmedAt if available, else submittedAt, else treat as day 1
+            const startStr  = dep.confirmedAt || dep.submittedAt;
+            const start     = startStr ? new Date(startStr).getTime() : now;
+            // Always count at least 1 day so rewards show immediately on confirmation
+            const daysElapsed = Math.max(1, Math.min(Math.floor((now - start) / 86400000), period));
 
             let bal = principal;
             let t1  = 0, t2 = 0;
@@ -1069,10 +1072,12 @@
               if(d <= 180) t1 += reward;
               else         t2 += reward;
             }
-            totalEth  += bal;
-            t1Rewards += t1;
-            t2Rewards += t2;
+            totalPrincipal += bal;
+            t1Rewards      += t1;
+            t2Rewards      += t2;
           });
+
+          const totalEth = totalPrincipal;
 
           const price = ethPrice || 0;
           const fmt   = (n) => n.toFixed(4);
