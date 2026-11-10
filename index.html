@@ -767,8 +767,8 @@
             Connected · <span id="bmDisplayUser">—</span>
           </div>
           <div class="bm-total-label">Total Balance</div>
-          <div class="bm-total-amount">$0.00</div>
-          <div class="bm-total-eth">0.0000 ETH · awaiting first deposit</div>
+          <div class="bm-total-amount" id="bmTotalUsd">$0.00</div>
+          <div class="bm-total-eth" id="bmTotalEth">0.0000 ETH · awaiting first deposit</div>
           <button class="bm-cta-btn" style="margin-top:4px;" onclick="closeBalance();openModal();">
             <svg viewBox="0 0 24 24" width="14" height="14" style="vertical-align:-2px;margin-right:6px;" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
             Stake
@@ -785,8 +785,8 @@
                 <div class="bm-token-desc">Available balance</div>
               </div>
               <div class="bm-token-right">
-                <div class="bm-token-value">— ETH</div>
-                <div class="bm-token-usd">$—</div>
+                <div class="bm-token-value" id="bmEthValue">— ETH</div>
+                <div class="bm-token-usd" id="bmEthUsd">$—</div>
               </div>
             </div>
             <div class="bm-token">
@@ -796,8 +796,8 @@
                 <div class="bm-token-desc">Locked in vault <span class="bm-apy-pill">Earning 0.9% APD</span></div>
               </div>
               <div class="bm-token-right">
-                <div class="bm-token-value">0.0000 ETH</div>
-                <div class="bm-token-usd">$0.00</div>
+                <div class="bm-token-value" id="bmStakedValue">0.0000 ETH</div>
+                <div class="bm-token-usd" id="bmStakedUsd">$0.00</div>
               </div>
             </div>
           </div>
@@ -811,8 +811,8 @@
                 <div class="bm-reward-rate">0.9% daily · Tier 1</div>
               </div>
               <div class="bm-reward-right">
-                <div class="bm-reward-eth t1c">0.0000 ETH</div>
-                <div class="bm-reward-usd">$0.00</div>
+                <div class="bm-reward-eth t1c" id="bmT1Eth">0.0000 ETH</div>
+                <div class="bm-reward-usd" id="bmT1Usd">$0.00</div>
               </div>
             </div>
             <div class="bm-reward-row">
@@ -822,8 +822,8 @@
                 <div class="bm-reward-rate">0.45% daily · Tier 5</div>
               </div>
               <div class="bm-reward-right">
-                <div class="bm-reward-eth t5c">0.0000 ETH</div>
-                <div class="bm-reward-usd">$0.00</div>
+                <div class="bm-reward-eth t5c" id="bmT2Eth">0.0000 ETH</div>
+                <div class="bm-reward-usd" id="bmT2Usd">$0.00</div>
               </div>
             </div>
           </div>
@@ -1010,13 +1010,90 @@
     }
 
     /* ── BALANCE MODAL ── */
-    function openBalance(){
+    async function openBalance(){
       const isLoggedIn = session.loggedIn;
       document.getElementById('bmNotLoggedIn').style.display = isLoggedIn ? 'none' : 'block';
       document.getElementById('bmLoggedIn').style.display   = isLoggedIn ? 'block' : 'none';
       if(isLoggedIn){
-        document.getElementById('bmDisplayUser').textContent  = session.username;
-        document.getElementById('bmLogoutUser').textContent   = session.username;
+        document.getElementById('bmDisplayUser').textContent = session.username;
+        document.getElementById('bmLogoutUser').textContent  = session.username;
+        // Reset to loading state
+        document.getElementById('bmTotalUsd').textContent  = 'Loading…';
+        document.getElementById('bmTotalEth').textContent  = '…';
+        document.getElementById('bmEthValue').textContent  = '— ETH';
+        document.getElementById('bmEthUsd').textContent    = '$—';
+        document.getElementById('bmStakedValue').textContent = '0.0000 ETH';
+        document.getElementById('bmStakedUsd').textContent   = '$0.00';
+        document.getElementById('bmT1Eth').textContent = '0.0000 ETH';
+        document.getElementById('bmT1Usd').textContent = '$0.00';
+        document.getElementById('bmT2Eth').textContent = '0.0000 ETH';
+        document.getElementById('bmT2Usd').textContent = '$0.00';
+
+        try {
+          // Fetch deposits from JSONbin
+          const res  = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+            headers: { 'X-Master-Key': JSONBIN_API_KEY }
+          });
+          const data = await res.json();
+          const all  = (data.record && data.record.deposits) ? data.record.deposits : [];
+
+          // Filter confirmed deposits for this user (match username + email)
+          const mine = all.filter(d =>
+            d.status === 'confirmed' &&
+            d.username === session.username &&
+            d.email === session.email
+          );
+
+          if(mine.length === 0){
+            document.getElementById('bmTotalUsd').textContent = '$0.00';
+            document.getElementById('bmTotalEth').textContent = '0.0000 ETH · awaiting confirmed deposit';
+            return;
+          }
+
+          // Calculate current balance with daily compounding for each deposit
+          let totalEth = 0, t1Rewards = 0, t2Rewards = 0;
+          const now = Date.now();
+
+          mine.forEach(dep => {
+            const principal = dep.amount || 0;
+            const period    = dep.period || 180;
+            const start     = new Date(dep.submittedAt).getTime();
+            const daysElapsed = Math.min(Math.floor((now - start) / 86400000), period);
+
+            let bal = principal;
+            let t1  = 0, t2 = 0;
+            for(let d = 1; d <= daysElapsed; d++){
+              const rate   = d <= 180 ? 0.009 : 0.0045;
+              const reward = bal * rate;
+              bal += reward;
+              if(d <= 180) t1 += reward;
+              else         t2 += reward;
+            }
+            totalEth  += bal;
+            t1Rewards += t1;
+            t2Rewards += t2;
+          });
+
+          const price = ethPrice || 0;
+          const fmt   = (n) => n.toFixed(4);
+          const usd   = (n) => '$' + (n * price).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+          document.getElementById('bmTotalUsd').textContent    = usd(totalEth);
+          document.getElementById('bmTotalEth').textContent    = fmt(totalEth) + ' ETH staked & earning';
+          document.getElementById('bmEthValue').textContent    = fmt(totalEth) + ' ETH';
+          document.getElementById('bmEthUsd').textContent      = usd(totalEth);
+          document.getElementById('bmStakedValue').textContent = fmt(totalEth) + ' ETH';
+          document.getElementById('bmStakedUsd').textContent   = usd(totalEth);
+          document.getElementById('bmT1Eth').textContent       = fmt(t1Rewards) + ' ETH';
+          document.getElementById('bmT1Usd').textContent       = usd(t1Rewards);
+          document.getElementById('bmT2Eth').textContent       = fmt(t2Rewards) + ' ETH';
+          document.getElementById('bmT2Usd').textContent       = usd(t2Rewards);
+
+        } catch(e) {
+          document.getElementById('bmTotalUsd').textContent = 'Error loading';
+          document.getElementById('bmTotalEth').textContent = 'Could not fetch balance';
+          console.warn('Balance fetch failed:', e);
+        }
       }
       document.getElementById('balanceOverlay').classList.add('open');
       document.body.style.overflow='hidden';
