@@ -25,7 +25,7 @@
     nav ul a{color:var(--muted);text-decoration:none;font-size:0.9rem;transition:color 0.2s;}
     nav ul a:hover{color:var(--text);}
     .nav-right{display:flex;gap:12px;align-items:center;}
-    .nav-balance-btn{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:8px;border:1px solid var(--border);background:var(--violet-soft);color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:0.88rem;font-weight:600;cursor:pointer;transition:border-color 0.2s,background 0.2s;}
+    .nav-balance-btn{display:inline-flex;align-items:center;gap:8px;padding:9px 18px;border-radius:8px;border:1px solid var(--border);background:var(--violet-soft);color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:0.88rem;font-weight:600;cursor:pointer;transition:border-color 0.2s,background 0.2s;min-height:40px;min-width:40px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
     .nav-balance-btn:hover{border-color:var(--violet);background:rgba(123,79,255,0.2);}
     .nav-balance-btn svg{width:15px;height:15px;stroke:var(--cyan);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
     .nav-cta{background:var(--violet);color:#fff;padding:10px 22px;border-radius:8px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:0.9rem;border:none;cursor:pointer;transition:opacity 0.2s;}
@@ -308,23 +308,60 @@
 
     /* ── Mobile (≤480px) ── */
     @media(max-width:480px){
-      /* Nav: stack logo + buttons only, hide text labels on secondary btns */
-      nav{padding:14px 16px;gap:8px;flex-wrap:nowrap;}
-      .nav-right{gap:6px;flex-shrink:0;}
+      /* Nav: keep everything on one row, don't let it overflow */
+      nav{
+        padding:12px 14px;
+        gap:0;
+        flex-wrap:nowrap;
+        align-items:center;
+        justify-content:space-between;
+      }
+      .logo{font-size:1.05rem;flex-shrink:0;}
 
-      /* Balance button: icon only */
-      .nav-balance-btn{padding:9px 10px;}
+      /* Right side of nav: pack tightly, never overflow */
+      .nav-right{
+        display:flex;
+        align-items:center;
+        gap:6px;
+        flex-shrink:0;
+        flex-wrap:nowrap;
+        min-width:0;
+      }
+
+      /* Hide username chip on mobile — saves space, logout btn still works */
+      .nav-user-chip{display:none!important;}
+
+      /* Balance button: show icon + label but make it compact */
+      .nav-balance-btn{
+        padding:8px 10px;
+        gap:5px;
+        font-size:0.78rem;
+        min-width:0;
+        flex-shrink:0;
+        -webkit-tap-highlight-color:transparent;
+        touch-action:manipulation;
+      }
+      .nav-balance-btn svg{width:14px;height:14px;flex-shrink:0;}
       .nav-balance-btn .nav-balance-label{display:none;}
 
-      /* Stake / Stake More button: shorter label handled via JS; shrink padding */
-      .nav-cta{padding:9px 12px;font-size:0.82rem;}
+      /* Stake button */
+      .nav-cta{
+        padding:8px 12px;
+        font-size:0.8rem;
+        flex-shrink:0;
+        white-space:nowrap;
+        -webkit-tap-highlight-color:transparent;
+        touch-action:manipulation;
+      }
 
       /* Logout button: icon only */
-      .nav-logout{padding:9px 10px;}
+      .nav-logout{
+        padding:8px 9px;
+        flex-shrink:0;
+        -webkit-tap-highlight-color:transparent;
+        touch-action:manipulation;
+      }
       .nav-logout .nav-logout-label{display:none;}
-
-      /* User chip: shrink */
-      .nav-user-chip{padding:5px 10px;font-size:0.78rem;}
 
       /* Sections */
       .section{padding:52px 16px;}
@@ -362,19 +399,32 @@
       /* Period grid: single column on very small screens */
       .period-grid{grid-template-columns:1fr;}
 
-      /* Modal */
-      .modal{padding:28px 16px;border-radius:16px;max-height:88vh;}
+      /* Modal: full-screen bottom sheet feel */
+      .modal-overlay{align-items:flex-end;padding:0;}
+      .modal{
+        padding:28px 16px 32px;
+        border-radius:20px 20px 0 0;
+        max-height:92vh;
+        width:100%;
+        max-width:100%;
+      }
       .modal h3{font-size:1.1rem;}
 
       /* Deposit panel */
       .dep-amount{font-size:1.8rem;}
       .dep-addr-box{flex-direction:column;align-items:flex-start;}
       .dep-addr-box .copy-btn{width:100%;justify-content:center;}
-      .stake-summary{gap:8px;}
+      .stake-summary{grid-template-columns:repeat(2,1fr);gap:8px;}
       .stake-summary-item .ss-val{font-size:0.82rem;}
 
-      /* Balance modal */
-      .balance-modal{border-radius:18px;}
+      /* Balance modal: full width, bottom sheet */
+      .balance-modal-overlay{padding:0;align-items:flex-end;}
+      .balance-modal{
+        border-radius:20px 20px 0 0;
+        max-width:100%;
+        width:100%;
+        max-height:88vh;
+      }
       .bm-hero{padding:28px 20px 20px;}
       .bm-total-amount{font-size:2rem;}
       .bm-body{padding:18px 20px 20px;}
@@ -403,7 +453,7 @@
         <span class="chip-dot"></span>
         <span id="navUsername">—</span>
       </div>
-      <button class="nav-balance-btn" onclick="openBalance()">
+      <button class="nav-balance-btn" onclick="openBalance()" type="button" aria-label="View balance">
         <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8L2 7h20l-6-4z"/><path d="M12 11v6M9 14h6"/></svg>
         <span class="nav-balance-label">Balance</span>
       </button>
@@ -952,7 +1002,11 @@
       document.getElementById('depFinalDisplay').textContent  = balFmt + ' ETH';
       document.getElementById('depFinalUsd').textContent      = ethPrice ? '≈ $'+(bal*ethPrice).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '';
     }
-    function closeModal(){document.getElementById('modalOverlay').classList.remove('open');document.body.style.overflow='';}
+    function closeModal(){
+      document.getElementById('modalOverlay').classList.remove('open');
+      document.body.style.overflow='';
+      document.body.style.position='';
+    }
     function overlayClick(e){if(e.target===document.getElementById('modalOverlay'))closeModal();}
 
     function goToPanel(n){
@@ -1173,7 +1227,11 @@
       document.getElementById('balanceOverlay').classList.add('open');
       document.body.style.overflow='hidden';
     }
-    function closeBalance(){document.getElementById('balanceOverlay').classList.remove('open');document.body.style.overflow='';}
+    function closeBalance(){
+      document.getElementById('balanceOverlay').classList.remove('open');
+      document.body.style.overflow='';
+      document.body.style.position='';
+    }
     function balanceOverlayClick(e){if(e.target===document.getElementById('balanceOverlay'))closeBalance();}
 
     /* ── LIVE ETH PRICE ── */
