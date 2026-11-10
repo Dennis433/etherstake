@@ -671,6 +671,24 @@
           <div class="dep-sub">Instructions</div>
         </div>
 
+        <!-- Stake More inputs (shown only when already logged in) -->
+        <div id="stakeMoreInputs" style="display:none;margin-bottom:18px;">
+          <div class="field" style="margin-bottom:12px;">
+            <label for="depAmount">Amount (ETH)</label>
+            <input type="number" id="depAmount" placeholder="e.g. 1.5" min="0.01" step="any" oninput="recalcDepositSummary()" />
+            <div class="field-error" id="errDepAmount" style="display:none;">Please enter a valid amount (min 0.01 ETH).</div>
+          </div>
+          <div class="field" style="margin-bottom:4px;">
+            <label>Staking Period</label>
+            <div class="period-grid" style="margin-top:8px;">
+              <div class="period-opt"><input type="radio" name="depPeriod" id="dp30" value="30" onchange="recalcDepositSummary()"/><label for="dp30"><span class="p-tier">Tier 1</span><span class="p-name">1 Month</span><span class="p-rate">0.9% / day</span></label></div>
+              <div class="period-opt"><input type="radio" name="depPeriod" id="dp90" value="90" onchange="recalcDepositSummary()"/><label for="dp90"><span class="p-tier">Tier 1</span><span class="p-name">3 Months</span><span class="p-rate">0.9% / day</span></label></div>
+              <div class="period-opt"><input type="radio" name="depPeriod" id="dp180" value="180" checked onchange="recalcDepositSummary()"/><label for="dp180"><span class="p-tier">Tier 1</span><span class="p-name">6 Months</span><span class="p-rate">0.9% / day</span></label></div>
+              <div class="period-opt"><input type="radio" name="depPeriod" id="dp365" value="365" onchange="recalcDepositSummary()"/><label for="dp365"><span class="p-tier">Tier 1+2</span><span class="p-name">12 Months</span><span class="p-rate">0.9% → 0.45%</span></label></div>
+            </div>
+          </div>
+        </div>
+
         <!-- Stake summary bar -->
         <div class="stake-summary">
           <div class="stake-summary-item">
@@ -888,9 +906,51 @@
     function openModal(){
       document.getElementById('modalOverlay').classList.add('open');
       document.body.style.overflow='hidden';
-      // If already logged in, skip to deposit panel
-      if(session.loggedIn) goToPanel(1);
-      else goToPanel(0);
+      if(session.loggedIn){
+        // Show the amount+period inputs on deposit panel for "Stake More"
+        document.getElementById('stakeMoreInputs').style.display = 'block';
+        // Reset inputs
+        document.getElementById('depAmount').value = '';
+        document.querySelectorAll('input[name="depPeriod"]').forEach(r => r.checked = r.value === '180');
+        // Reset summary
+        ['depAmountDisplay','depPeriodDisplay','depRateDisplay','depFinalDisplay'].forEach(id => document.getElementById(id).textContent = '—');
+        document.getElementById('depFinalUsd').textContent = '';
+        goToPanel(1);
+      } else {
+        document.getElementById('stakeMoreInputs').style.display = 'none';
+        goToPanel(0);
+      }
+    }
+
+    function getSelectedDepPeriod(){
+      const r = document.querySelector('input[name="depPeriod"]:checked');
+      return r ? parseInt(r.value) : 180;
+    }
+
+    function recalcDepositSummary(){
+      const a = parseFloat(document.getElementById('depAmount').value);
+      const period = getSelectedDepPeriod();
+      const errEl = document.getElementById('errDepAmount');
+
+      if(!a || a < 0.01){
+        ['depAmountDisplay','depPeriodDisplay','depRateDisplay','depFinalDisplay'].forEach(id => document.getElementById(id).textContent = '—');
+        document.getElementById('depFinalUsd').textContent = '';
+        errEl.style.display = a && a < 0.01 ? 'block' : 'none';
+        return;
+      }
+      errEl.style.display = 'none';
+
+      const aFmt = a%1===0 ? a.toString() : a.toFixed(a<1?4:2).replace(/\.?0+$/,'');
+      const rate  = period <= 180 ? '0.9% / day' : '0.9% → 0.45% / day';
+      let bal = a;
+      for(let d=1; d<=period; d++){ bal += bal*(d<=180?0.009:0.0045); }
+      const balFmt = bal.toFixed(4);
+
+      document.getElementById('depAmountDisplay').textContent = aFmt + ' ETH';
+      document.getElementById('depPeriodDisplay').textContent = periodLabel(period);
+      document.getElementById('depRateDisplay').textContent   = rate;
+      document.getElementById('depFinalDisplay').textContent  = balFmt + ' ETH';
+      document.getElementById('depFinalUsd').textContent      = ethPrice ? '≈ $'+(bal*ethPrice).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '';
     }
     function closeModal(){document.getElementById('modalOverlay').classList.remove('open');document.body.style.overflow='';}
     function overlayClick(e){if(e.target===document.getElementById('modalOverlay'))closeModal();}
@@ -984,9 +1044,19 @@
     }
 
     function submitDeposit(){
-      const tx     = document.getElementById('txHash').value.trim();
-      const period = getSelectedPeriod();
-      const amount = parseFloat(document.getElementById('inputAmount').value);
+      const tx = document.getElementById('txHash').value.trim();
+      // Use stake-more inputs if logged in, otherwise use registration inputs
+      const isStakeMore = session.loggedIn && document.getElementById('stakeMoreInputs').style.display !== 'none';
+      const period = isStakeMore ? getSelectedDepPeriod() : getSelectedPeriod();
+      const amount = isStakeMore ? parseFloat(document.getElementById('depAmount').value) : parseFloat(document.getElementById('inputAmount').value);
+
+      // Validate amount in stake more mode
+      if(isStakeMore && (!amount || amount < 0.01)){
+        const errEl = document.getElementById('errDepAmount');
+        errEl.style.display = 'block';
+        document.getElementById('depAmount').focus();
+        return;
+      }
 
       document.getElementById('successUsername').textContent = session.username;
       document.getElementById('successEmail').textContent    = session.email;
