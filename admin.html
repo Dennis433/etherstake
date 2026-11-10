@@ -346,6 +346,7 @@
     if(idx===-1) return;
     allDeposits[idx].status = newStatus;
     allDeposits[idx].reviewedAt = new Date().toISOString();
+    if(newStatus === 'confirmed') allDeposits[idx].confirmedAt = new Date().toISOString();
 
     try {
       await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`,{
