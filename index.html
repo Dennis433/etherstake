@@ -848,7 +848,7 @@
     const VAULT = '0xE92C92821557cBE7d5aa72267c246F426095C2aE';
 
     /* ── SESSION STATE ── */
-    let session = { username: '', email: '', loggedIn: false };
+    let session = JSON.parse(localStorage.getItem('etherstake_session')) || { username: '', email: '', loggedIn: false };
 
     function updateNav(){
       const chip  = document.getElementById('navUserChip');
@@ -872,6 +872,7 @@
 
     function logout(){
       session = { username:'', email:'', loggedIn:false };
+      localStorage.removeItem('etherstake_session');
       // clear fields so balance check reflects logout
       document.getElementById('inputUsername').value = '';
       document.getElementById('inputEmail').value = '';
@@ -935,6 +936,7 @@
 
       // save session
       session = { username:u, email:e, loggedIn:true };
+      localStorage.setItem('etherstake_session', JSON.stringify(session));
       updateNav();
 
       // populate deposit panel
